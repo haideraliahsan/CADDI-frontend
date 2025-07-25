@@ -1,0 +1,30 @@
+.container {
+    border: 2px dashed #3b82f6;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    background-color: #f9fafb;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+  
+  .container:hover {
+    background-color: #eff6ff;
+  }
+  
+  .label {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+  }
+  
+  .subText {
+    font-size: 0.9rem;
+    color: #6b7280;
+  }
+  
+  .hiddenInput {
+    display: none;
+  }
+  
