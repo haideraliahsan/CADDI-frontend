@@ -4,7 +4,7 @@ import React, { useRef, useState } from 'react';
 
 interface AnnotationCanvasProps {
   imageSrc: string;
-  mode: string;
+  mode: 'draw' | 'move' | 'select' | 'comment' | 'delete';
 }
 
 interface Rect {
@@ -16,7 +16,7 @@ interface Rect {
 }
 
 const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ imageSrc, mode }) => {
-  const canvasRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [rects, setRects] = useState<Rect[]>([]);
   const [start, setStart] = useState<{ x: number; y: number } | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -24,17 +24,17 @@ const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ imageSrc, mode }) =
   const [showCommentBox, setShowCommentBox] = useState(false);
 
   const getMousePos = (e: React.MouseEvent) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return { x: 0, y: 0 };
-    return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
+    const rect = containerRef.current?.getBoundingClientRect();
+    return rect
+      ? {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top,
+        }
+      : { x: 0, y: 0 };
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     const { x, y } = getMousePos(e);
-
     if (mode === 'draw') {
       setStart({ x, y });
     } else if (mode === 'move') {
@@ -45,23 +45,6 @@ const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ imageSrc, mode }) =
         }
       });
     }
-  };
-
-  const handleMouseUp = (e: React.MouseEvent) => {
-    const { x, y } = getMousePos(e);
-
-    if (mode === 'draw' && start) {
-      const newRect: Rect = {
-        x: Math.min(start.x, x),
-        y: Math.min(start.y, y),
-        width: Math.abs(x - start.x),
-        height: Math.abs(y - start.y),
-        comments: [],
-      };
-      setRects([...rects, newRect]);
-    }
-    setStart(null);
-    setSelectedIndex(null);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -75,6 +58,22 @@ const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ imageSrc, mode }) =
       };
       setRects(updated);
     }
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    const { x, y } = getMousePos(e);
+    if (mode === 'draw' && start) {
+      const newRect: Rect = {
+        x: Math.min(start.x, x),
+        y: Math.min(start.y, y),
+        width: Math.abs(x - start.x),
+        height: Math.abs(y - start.y),
+        comments: [],
+      };
+      setRects([...rects, newRect]);
+    }
+    setStart(null);
+    setSelectedIndex(null);
   };
 
   const handleClick = (e: React.MouseEvent, i: number) => {
@@ -99,18 +98,31 @@ const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ imageSrc, mode }) =
 
   return (
     <div
-      ref={canvasRef}
-      className="relative w-full min-h-[600px] bg-white cursor-crosshair"
+      ref={containerRef}
+      className={`relative mx-auto w-full max-w-4xl border bg-white aspect-video overflow-hidden ${
+        mode === 'draw'
+          ? 'cursor-crosshair'
+          : mode === 'move'
+          ? 'cursor-move'
+          : mode === 'comment'
+          ? 'cursor-pointer'
+          : mode === 'delete'
+          ? 'cursor-not-allowed'
+          : 'cursor-default'
+      }`}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
     >
+      {/* Image underneath */}
       <img
         src={imageSrc}
-        alt="image"
-        className="w-full h-auto pointer-events-none"
+        alt="annotation"
+        className="absolute top-0 left-0 w-full h-full object-contain pointer-events-none"
+        draggable={false}
       />
 
+      {/* Render boxes */}
       {rects.map((r, i) => (
         <div
           key={i}
@@ -118,7 +130,7 @@ const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ imageSrc, mode }) =
             e.stopPropagation();
             handleClick(e, i);
           }}
-          className="absolute border-2 border-blue-500 bg-blue-200/20"
+          className="absolute border-2 border-blue-500 bg-blue-200/30"
           style={{
             top: r.y,
             left: r.x,
@@ -134,8 +146,9 @@ const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ imageSrc, mode }) =
         </div>
       ))}
 
+      {/* Comment box */}
       {showCommentBox && (
-        <div className="absolute top-4 right-4 bg-white p-3 shadow-lg z-50 w-64 rounded">
+        <div className="absolute top-4 right-4 bg-white p-3 shadow-md z-50 w-64 rounded">
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
